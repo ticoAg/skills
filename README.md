@@ -4,6 +4,8 @@ This repository contains reusable Codex CLI skills.
 
 - Each skill folder contains a `SKILL.md` with instructions.
 - OpenAI upstream skills are kept under their original namespaces: `.curated/`, `.experimental/`, and `.system/`.
+  - Convenience: top-level symlinks exist for `.curated/` and `.experimental/` skills.
+  - `.system/` skills are *not* symlinked (they are already available under `.system/`).
 
 ## Structure
 

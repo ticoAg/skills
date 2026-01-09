@@ -1,6 +1,6 @@
 ---
 name: feature-worktree-flow
-description: A git-worktree-based feature development flow: clarify requirements, create a `feat/<name>` branch in a sibling worktree, ship an MVP, validate, explain changes, then squash-merge back to the baseline branch.
+description: "A git-worktree-based feature development flow: clarify requirements, create a `feat/<name>` branch in a sibling worktree, ship an MVP, validate, explain changes, then squash-merge back to the baseline branch."
 ---
 
 # Feature Worktree Flow

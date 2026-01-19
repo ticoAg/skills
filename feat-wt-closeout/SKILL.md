@@ -48,7 +48,7 @@ bash ~/.codex/skills/feat-wt-closeout/scripts/prepare-squash-merge.sh {slug}
 
 注意：脚本不会自动 commit（为了强制走 `git-auto-commit` 的 message 生成流程）。
 
-（可选）你也可以用脚本读取本任务沉淀文档的 YAML header（输出带文件路径，JSON 格式）：
+（可选）你也可以用脚本读取本任务沉淀文档的 YAML header（输出带文件路径，Markdown 列表，默认隐藏重复字段如 slug/notes_dir）：
 
 ```bash
 python3 ~/.codex/skills/feat-wt-closeout/scripts/read-notes-headers.py {slug}

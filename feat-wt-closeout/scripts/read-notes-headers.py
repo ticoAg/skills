@@ -96,6 +96,11 @@ def main(argv: list[str]) -> int:
         help="repo root (default: auto-detect via git); useful when running outside a repo",
         default=None,
     )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="include redundant/common keys such as slug/notes_dir (default: hidden for brevity)",
+    )
     args = parser.parse_args(argv)
 
     repo_root = Path(args.root).resolve() if args.root else _repo_root(Path.cwd())
@@ -107,34 +112,54 @@ def main(argv: list[str]) -> int:
         print(f"        repo_root={repo_root}", file=sys.stderr)
         return 1
 
-    files: list[dict[str, Any]] = []
-    for p in sorted(notes_dir.rglob("*")):
-        if not p.is_file():
-            continue
-        header = _parse_frontmatter(_read_text_best_effort(p))
+    # Keep output concise: don't repeat very common keys unless requested.
+    hidden_keys = {"slug", "notes_dir"}
+    if args.all:
+        hidden_keys = set()
 
+    def _format_value(v: Any) -> str:
+        if v is None:
+            return "null"
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        if isinstance(v, (int, float)):
+            return str(v)
+        if isinstance(v, str):
+            return v
+        return json.dumps(v, ensure_ascii=False, separators=(",", ":"), default=str)
+
+    md_files = [p for p in notes_dir.rglob("*.md") if p.is_file()]
+    priority = {"requirements.md": 0, "context.md": 1, "disagreements.md": 2, "delivery.md": 3}
+    md_files.sort(key=lambda p: (priority.get(p.name, 100), p.as_posix()))
+
+    for p in md_files:
         try:
             rel = p.relative_to(repo_root).as_posix()
         except Exception:
             rel = str(p)
 
-        files.append({"path": rel, "header": header})
+        print(f"- `{rel}`")
 
-    try:
-        notes_rel = notes_dir.relative_to(repo_root).as_posix()
-    except Exception:
-        notes_rel = str(notes_dir)
+        header = _parse_frontmatter(_read_text_best_effort(p))
+        if header is None:
+            print("  - (no yaml frontmatter)")
+            continue
 
-    payload = {
-        "slug": args.slug,
-        "notesDir": notes_rel,
-        "mode": mode,
-        "files": files,
-    }
-    print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str))
+        if isinstance(header, dict):
+            printed = False
+            for k, v in header.items():
+                if k in hidden_keys:
+                    continue
+                printed = True
+                print(f"  - {k}: {_format_value(v)}")
+            if not printed:
+                print("  - (no header fields)")
+            continue
+
+        # Rare: non-dict YAML content (e.g. list/string). Keep it compact on one line.
+        print(f"  - header: {_format_value(header)}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

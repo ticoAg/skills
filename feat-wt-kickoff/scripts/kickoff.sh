@@ -82,7 +82,7 @@ slug: "${slug}"
 notes_dir: "${notes_rel_dir}"
 base_branch: "${base_branch}"
 feature_branch: "${feature_branch}"
-worktree: "${feature_root}"
+worktree: "${worktree_dir}"
 created_at_utc: "${created_at}"
 ---
 # Feature Requirements: ${slug}
@@ -93,7 +93,7 @@ created_at_utc: "${created_at}"
 - Current: v0 (draft)
 - Base branch: ${base_branch}
 - Feature branch: ${feature_branch}
-- Worktree: ${feature_root}
+- Worktree: ${worktree_dir}
 - Created (UTC): ${created_at}
 
 ## v0 (draft) - ${created_at}

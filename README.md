@@ -13,6 +13,7 @@ This repository contains reusable Codex CLI skills.
 - `code-simplifier-ts/`: TypeScript/JavaScript refactor skill
 - `.curated/`: Curated upstream skills (mirrors `openai/skills`)
 - `.experimental/`: Experimental upstream skills (mirrors `openai/skills`)
-- `feature-worktree-flow/`: Feature development workflow using `git worktree`
+- `feat-wt-kickoff/`: Feature kickoff workflow using `git worktree` (branch + worktree + notes)
+- `feat-wt-closeout/`: Feature closeout workflow (squash merge + delivery notes)
 - `git-auto-commit/`: Helper workflow for crafting a Conventional Commit and running `git commit`
 - `.system/`: Internal helper skills (e.g., skill installer/creator)

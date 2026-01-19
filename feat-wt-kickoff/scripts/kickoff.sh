@@ -14,7 +14,7 @@ Behavior:
   - Run in the base repo root.
   - Create a sibling worktree: ../{repo}-feat-{slug}
   - Create branch: feat/{slug} (based on base-branch; default: current branch)
-  - Initialize tracked feature notes under: .cache/codex/features/{slug}/
+  - Initialize tracked feature notes under: .feat/{YYYYMMDD-HHMM}-{slug}/
 EOF
 }
 
@@ -67,35 +67,27 @@ echo "[INFO] worktree dir: ${worktree_dir}"
 git worktree add "${worktree_dir}" -b "${feature_branch}" "${base_branch}"
 
 feature_root="$(cd "${worktree_dir}" && git rev-parse --show-toplevel)"
-notes_rel_dir=".cache/codex/features/${slug}"
+notes_ts="$(date -u '+%Y%m%d-%H%M')"
+notes_rel_dir=".feat/${notes_ts}-${slug}"
 notes_dir="${feature_root}/${notes_rel_dir}"
 mkdir -p "${notes_dir}"
 
 created_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
-SLUG="${slug}" \
-BASE_REPO="${repo_root}" \
-BASE_BRANCH="${base_branch}" \
-FEATURE_BRANCH="${feature_branch}" \
-FEATURE_WORKTREE="${feature_root}" \
-CREATED_AT="${created_at}" \
-python3 - <<'PY' >"${notes_dir}/meta.json"
-import json
-import os
-
-meta = {
-  "slug": os.environ["SLUG"],
-  "base_repo": os.environ["BASE_REPO"],
-  "base_branch": os.environ["BASE_BRANCH"],
-  "feature_branch": os.environ["FEATURE_BRANCH"],
-  "feature_worktree": os.environ["FEATURE_WORKTREE"],
-  "created_at_utc": os.environ["CREATED_AT"],
-}
-print(json.dumps(meta, ensure_ascii=True, indent=2, sort_keys=True))
-PY
-
 cat >"${notes_dir}/requirements.md" <<EOF
+---
+summary: "Feature requirements and validation scope for ${slug}"
+doc_type: requirements
+slug: "${slug}"
+notes_dir: "${notes_rel_dir}"
+base_branch: "${base_branch}"
+feature_branch: "${feature_branch}"
+worktree: "${feature_root}"
+created_at_utc: "${created_at}"
+---
 # Feature Requirements: ${slug}
+
+> 使用与用户需求一致的语言填写本文档内容。
 
 ## Status
 - Current: v0 (draft)
@@ -132,8 +124,17 @@ cat >"${notes_dir}/requirements.md" <<EOF
 > 在用户确认后补齐，并标注确认日期/版本差异。
 EOF
 
-cat >"${notes_dir}/context.md" <<'EOF'
+cat >"${notes_dir}/context.md" <<EOF
+---
+summary: "Evidence-first context notes for ${slug}"
+doc_type: context
+slug: "${slug}"
+notes_dir: "${notes_rel_dir}"
+created_at_utc: "${created_at}"
+---
 # Context Notes
+
+> 使用与用户需求一致的语言填写本文档内容。
 
 目标：记录最小但关键的上下文证据（入口、现状、约束、关键定位）。
 要求：用 `path:line` 锚点，避免把大段日志贴进对话。
@@ -151,8 +152,17 @@ cat >"${notes_dir}/context.md" <<'EOF'
 - TODO
 EOF
 
-cat >"${notes_dir}/disagreements.md" <<'EOF'
+cat >"${notes_dir}/disagreements.md" <<EOF
+---
+summary: "Decision log for disagreements and trade-offs"
+doc_type: disagreements
+slug: "${slug}"
+notes_dir: "${notes_rel_dir}"
+created_at_utc: "${created_at}"
+---
 # Disagreement Log
+
+> 使用与用户需求一致的语言填写本文档内容。
 
 当需求/方案存在分歧时，用这里显式记录，并给出选项与 trade-off（然后停下等用户选择）。
 
@@ -163,8 +173,17 @@ cat >"${notes_dir}/disagreements.md" <<'EOF'
   - Notes:
 EOF
 
-cat >"${notes_dir}/delivery.md" <<'EOF'
+cat >"${notes_dir}/delivery.md" <<EOF
+---
+summary: "Delivery summary, verification, and impact notes"
+doc_type: delivery
+slug: "${slug}"
+notes_dir: "${notes_rel_dir}"
+created_at_utc: "${created_at}"
+---
 # Delivery Notes
+
+> 使用与用户需求一致的语言填写本文档内容。
 
 交付时的详细说明（最终会随 squash merge 合回 base 分支）。
 
@@ -206,9 +225,8 @@ if git -C "${feature_root}" check-ignore -q "${notes_rel_dir}/requirements.md"; 
     cat >>"${gitignore_path}" <<EOF
 
 ${marker_start}
-!.cache/
-!.cache/codex/
-!.cache/codex/**
+!.feat/
+!.feat/**
 ${marker_end}
 EOF
     echo "[INFO] 已追加 .gitignore 反忽略块：${gitignore_path}"

@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-cd "$ROOT"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/_common.sh"
 
-ruff_cmd() {
-  if command -v ruff >/dev/null 2>&1; then
-    echo "ruff"
-    return 0
-  fi
-  echo "python -m ruff"
-}
+ensure_ruff
+collect_targets "$@"
 
 RUFF="$(ruff_cmd)"
 
-echo "[code-simplifier-py] ruff format"
-$RUFF format .
-
+if [[ "${TARGETS[0]}" == "." ]]; then
+  log "ruff format ."
+  $RUFF format .
+else
+  log "ruff format (file list)"
+  $RUFF format "${TARGETS[@]}"
+fi

@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-cd "$ROOT"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/_common.sh"
 
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo "[code-simplifier-ts] pnpm not found; install pnpm or run via your package manager" >&2
-  exit 1
-fi
-
-echo "[code-simplifier-ts] pnpm exec prettier --write ."
-pnpm exec prettier --write .
-
+ensure_pnpm
+collect_targets "$@"
+run_prettier --write

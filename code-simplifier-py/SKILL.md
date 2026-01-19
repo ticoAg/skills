@@ -43,6 +43,17 @@ This skill assumes **Ruff** is the canonical formatter/linter.
 
 ## Notes on the scripts
 
-- `format.sh` runs `ruff format .`
-- `check.sh` runs `ruff check .` (optionally `--fix`)
-- `verify.sh` runs `check.sh`, then `python -m compileall .`, then runs `pytest` only when a `tests/` (or `test/`) folder exists and `pytest` is available.
+Default behavior is **small blast radius**:
+- If you pass paths, scripts run on those paths.
+- Otherwise, they use changed files from `git diff`; if none, they fall back to `git ls-files`.
+- Use `--all` to force a full repo scan (`.`).
+
+Examples:
+- Format a file: `bash ~/.codex/skills/code-simplifier-py/scripts/format.sh path/to/file.py`
+- Lint with fixes: `bash ~/.codex/skills/code-simplifier-py/scripts/check.sh --fix path/to/file.py`
+- Full repo lint: `bash ~/.codex/skills/code-simplifier-py/scripts/check.sh --all`
+
+Script internals:
+- `format.sh` runs `ruff format` on the computed targets.
+- `check.sh` runs `ruff check` on the computed targets (optional `--fix`).
+- `verify.sh` runs `check.sh`, then `python -m compileall` on the same targets, then runs `pytest` only when a `tests/` (or `test/`) folder exists and `pytest` is available.

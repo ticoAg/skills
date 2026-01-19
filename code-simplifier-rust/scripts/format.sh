@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-cd "$ROOT"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/_common.sh"
 
-echo "[code-simplifier-rust] cargo fmt"
-cargo fmt
+MANIFEST="$(find_manifest "$@")"
 
+log "cargo fmt --manifest-path \"$MANIFEST\""
+cargo fmt --manifest-path "$MANIFEST"

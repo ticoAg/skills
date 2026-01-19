@@ -1,36 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-cd "$ROOT"
-
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/_common.sh"
 
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo "[code-simplifier-ts] pnpm not found; install pnpm or run via your package manager" >&2
-  exit 1
-fi
-
-if [[ ! -f "package.json" ]]; then
-  echo "[code-simplifier-ts] package.json not found at repo root; run from your JS project root" >&2
-  exit 1
-fi
+ensure_pnpm
+collect_targets "$@"
 
 has_script() {
-  local script_name="$1"
-  node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['${script_name}'] ? 0 : 1)" \
+  local pkg_dir="$1"
+  local script_name="$2"
+  node -e "const p=require('${pkg_dir}/package.json'); process.exit(p.scripts && p.scripts['${script_name}'] ? 0 : 1)" \
     >/dev/null 2>&1
 }
 
-echo "[code-simplifier-ts] verify: prettier + (optional) lint/typecheck/test"
+log "verify: prettier + (optional) lint/typecheck/test"
 
-bash "$SCRIPT_DIR/check.sh"
+bash "$SCRIPT_DIR/check.sh" "$@"
+
+pnpm_dir="$(find_pnpm_dir "${TARGETS[0]}")" || die "no package.json found; set CODEX_PNPM_DIR or pass --dir"
 
 for s in lint typecheck test; do
-  if has_script "$s"; then
-    echo "[code-simplifier-ts] pnpm -s run $s"
-    pnpm -s run "$s"
+  if has_script "$pnpm_dir" "$s"; then
+    log "pnpm --dir \"$pnpm_dir\" -s run $s"
+    pnpm --dir "$pnpm_dir" -s run "$s"
   else
-    echo "[code-simplifier-ts] no \"$s\" script; skipping"
+    log "no \"$s\" script in $pnpm_dir; skipping"
   fi
 done

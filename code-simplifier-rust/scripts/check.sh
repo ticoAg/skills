@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-cd "$ROOT"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/_common.sh"
 
-FEATURE_ARGS=()
-if [[ "${ALL_FEATURES:-}" == "1" || "${1:-}" == "--all-features" ]]; then
-  FEATURE_ARGS=(--all-features)
+MANIFEST="$(find_manifest "$@")"
+
+CLIPPY_ARGS=(--all-targets --manifest-path "$MANIFEST")
+if [[ "${ALL_FEATURES:-}" == "1" || "$*" == *"--all-features"* ]]; then
+  CLIPPY_ARGS+=(--all-features)
 fi
-
-CLIPPY_ARGS=(--all-targets "${FEATURE_ARGS[@]}")
 RUSTC_ARGS=()
-if [[ "${DENY_WARNINGS:-}" == "1" || "${1:-}" == "--deny-warnings" || "${2:-}" == "--deny-warnings" ]]; then
+if [[ "${DENY_WARNINGS:-}" == "1" || "$*" == *"--deny-warnings"* ]]; then
   RUSTC_ARGS=(-D warnings)
 fi
 
-echo "[code-simplifier-rust] cargo clippy ${CLIPPY_ARGS[*]} ${RUSTC_ARGS[*]:-}"
+log "cargo clippy ${CLIPPY_ARGS[*]} ${RUSTC_ARGS[*]:-}"
 if [[ ${#RUSTC_ARGS[@]} -gt 0 ]]; then
   cargo clippy "${CLIPPY_ARGS[@]}" -- "${RUSTC_ARGS[@]}"
 else
   cargo clippy "${CLIPPY_ARGS[@]}"
 fi
-

@@ -44,6 +44,16 @@ This skill assumes `cargo fmt` and `cargo clippy` are the canonical tools.
 
 ## Notes on the scripts
 
-- `format.sh` runs `cargo fmt`
-- `check.sh` runs `cargo clippy --all-targets` (optional `ALL_FEATURES=1`, `DENY_WARNINGS=1`)
-- `verify.sh` runs `format.sh`, `check.sh`, then `cargo test` (optional `ALL_FEATURES=1`)
+To avoid errors in monorepos, scripts auto-detect `Cargo.toml`:
+- Use `--manifest <path>` or `--dir <dir>` to pick a crate explicitly.
+- Or set `CODEX_CARGO_MANIFEST`.
+
+Examples:
+- Format a crate: `bash ~/.codex/skills/code-simplifier-rust/scripts/format.sh --dir crates/my_crate`
+- Clippy with all features: `bash ~/.codex/skills/code-simplifier-rust/scripts/check.sh --all-features`
+- Verify a crate: `bash ~/.codex/skills/code-simplifier-rust/scripts/verify.sh --manifest crates/my_crate/Cargo.toml`
+
+Script internals:
+- `format.sh` runs `cargo fmt --manifest-path <Cargo.toml>`.
+- `check.sh` runs `cargo clippy --all-targets --manifest-path <Cargo.toml>` (optional `ALL_FEATURES=1`, `DENY_WARNINGS=1` or flags).
+- `verify.sh` runs `format.sh`, `check.sh`, then `cargo test --manifest-path <Cargo.toml>` (optional `ALL_FEATURES=1` or `--all-features`).

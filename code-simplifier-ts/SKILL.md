@@ -41,6 +41,21 @@ This skill assumes **Prettier** is the canonical formatter and **pnpm** is the p
 
 ## Notes on the scripts
 
-- `format.sh` runs `pnpm exec prettier --write .`
-- `check.sh` runs `pnpm exec prettier --check .`
-- `verify.sh` runs `check.sh`, then (if `package.json` has them) runs `pnpm -s run lint`, `pnpm -s run typecheck`, `pnpm -s run test`.
+Default behavior is **small blast radius** to avoid permission errors:
+- If you pass paths, scripts run on those paths.
+- Otherwise, they use changed files from `git diff`; if none, they fall back to `git ls-files`.
+- Use `--all` to force a full repo scan (`.`).
+
+Monorepo selection:
+- `--dir <pnpm-dir>` or `CODEX_PNPM_DIR` picks the pnpm working directory.
+- If not set, the scripts auto-detect a nearby `package.json` based on the first target file.
+
+Examples:
+- Format a file: `bash ~/.codex/skills/code-simplifier-ts/scripts/format.sh apps/gui/src/TaskDetail.tsx`
+- Check a package: `bash ~/.codex/skills/code-simplifier-ts/scripts/check.sh --dir apps/gui`
+- Full repo check: `bash ~/.codex/skills/code-simplifier-ts/scripts/check.sh --all`
+
+Script internals:
+- `format.sh` runs `pnpm exec prettier --write` on the computed targets.
+- `check.sh` runs `pnpm exec prettier --check` on the computed targets.
+- `verify.sh` runs `check.sh`, then (if present) runs `pnpm --dir <pnpm-dir> -s run lint`, `typecheck`, `test`.

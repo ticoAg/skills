@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-cd "$ROOT"
-
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/_common.sh"
 
-echo "[code-simplifier-rust] verify: fmt + clippy + tests"
+MANIFEST="$(find_manifest "$@")"
 
-bash "$SCRIPT_DIR/format.sh"
-bash "$SCRIPT_DIR/check.sh" "${@:-}"
+log "verify: fmt + clippy + tests"
 
-FEATURE_ARGS=()
-if [[ "${ALL_FEATURES:-}" == "1" || "${1:-}" == "--all-features" ]]; then
-  FEATURE_ARGS=(--all-features)
+bash "$SCRIPT_DIR/format.sh" --manifest "$MANIFEST"
+bash "$SCRIPT_DIR/check.sh" --manifest "$MANIFEST" "$@"
+
+FEATURE_ARGS=(--manifest-path "$MANIFEST")
+if [[ "${ALL_FEATURES:-}" == "1" || "$*" == *"--all-features"* ]]; then
+  FEATURE_ARGS+=(--all-features)
 fi
 
-echo "[code-simplifier-rust] cargo test ${FEATURE_ARGS[*]:-}"
+log "cargo test ${FEATURE_ARGS[*]:-}"
 cargo test "${FEATURE_ARGS[@]}"
-

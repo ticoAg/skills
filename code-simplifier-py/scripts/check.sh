@@ -1,24 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-cd "$ROOT"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/_common.sh"
 
-ruff_cmd() {
-  if command -v ruff >/dev/null 2>&1; then
-    echo "ruff"
-    return 0
+ensure_ruff
+
+FIX_ARGS=()
+FILTERED_ARGS=()
+for arg in "$@"; do
+  if [[ "$arg" == "--fix" ]]; then
+    FIX_ARGS=(--fix)
+  else
+    FILTERED_ARGS+=("$arg")
   fi
-  echo "python -m ruff"
-}
+done
+
+collect_targets "${FILTERED_ARGS[@]}"
 
 RUFF="$(ruff_cmd)"
 
-FIX_ARGS=()
-if [[ "${1:-}" == "--fix" ]]; then
-  FIX_ARGS=(--fix)
+if [[ "${TARGETS[0]}" == "." ]]; then
+  log "ruff check ${FIX_ARGS[*]:-} ."
+  $RUFF check . "${FIX_ARGS[@]}"
+else
+  log "ruff check ${FIX_ARGS[*]:-} (file list)"
+  $RUFF check "${TARGETS[@]}" "${FIX_ARGS[@]}"
 fi
-
-echo "[code-simplifier-py] ruff check ${FIX_ARGS[*]:-}"
-$RUFF check . "${FIX_ARGS[@]}"
-

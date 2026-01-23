@@ -14,7 +14,8 @@ Behavior:
   - Run in the base repo root.
   - Create a sibling worktree: ../{repo}-feat-{slug}
   - Create branch: feat/{slug} (based on base-branch; default: current branch)
-  - Initialize tracked feature notes under: .feat/{YYYYMMDD-HHMM}-{slug}/
+  - Initialize local feature notes under: .feat/{YYYYMMDD-HHMM}-{slug}/ (NOT tracked)
+  - Auto-archive stale notes (>12h since last modification) to: .feat/_archive/
 EOF
 }
 
@@ -44,6 +45,52 @@ if [[ -z "${base_branch}" ]]; then
   exit 1
 fi
 
+gitignore_has_feat_rule() {
+  local path="$1"
+  # Active rules: .feat / .feat/ / /.feat / /.feat/
+  # Treat unignore rules (e.g. !.feat/) as "present" too to avoid overriding repo intent.
+  [[ -f "${path}" ]] && grep -Eq '^[[:space:]]*!?/?\.feat(/|[[:space:]]|$)' "${path}"
+}
+gitignore_has_commented_feat_rule() {
+  local path="$1"
+  [[ -f "${path}" ]] && grep -Eq '^[[:space:]]*#[[:space:]]*!?/?\.feat(/|[[:space:]]|$)' "${path}"
+}
+ensure_feat_ignored_in_info_exclude() {
+  # Make .feat ignored immediately (local-only, shared across worktrees).
+  local common_dir
+  common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [[ -z "${common_dir}" ]]; then
+    common_dir="$(git rev-parse --git-common-dir)"
+    if [[ "${common_dir}" != /* ]]; then
+      common_dir="$(cd "${repo_root}" && cd "${common_dir}" && pwd -P)"
+    fi
+  fi
+
+  local exclude_path="${common_dir}/info/exclude"
+  mkdir -p "$(dirname "${exclude_path}")"
+  touch "${exclude_path}"
+
+  if grep -Eq '^[[:space:]]*\.feat(/|[[:space:]]|$)' "${exclude_path}"; then
+    echo "[OK] 已在 .git/info/exclude 忽略 .feat（local-only）。"
+    return 0
+  fi
+
+  cat >>"${exclude_path}" <<'EOF'
+
+# Local feature notes (not tracked)
+.feat/
+EOF
+  echo "[OK] 已写入 .git/info/exclude：忽略 .feat（local-only，不会进入 git）。"
+}
+
+base_gitignore_path="${repo_root}/.gitignore"
+if gitignore_has_commented_feat_rule "${base_gitignore_path}"; then
+  echo "[INFO] 检测到 .gitignore 中存在被注释掉的 .feat 规则；按约定不自动忽略 .feat，也不自动归档。"
+else
+  ensure_feat_ignored_in_info_exclude
+fi
+
+# Gate: base repo must be clean.
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "[ERROR] base repo 不干净；请先提交/暂存/清理未提交更改，再创建 worktree。" >&2
   git status -sb
@@ -64,15 +111,30 @@ echo "[INFO] base branch: ${base_branch}"
 echo "[INFO] feature branch: ${feature_branch}"
 echo "[INFO] worktree dir: ${worktree_dir}"
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+feat_root="${repo_root}/.feat"
+
+# Auto-archive stale notes (safe guard: only when .feat is ignored, otherwise we may move tracked files).
+if gitignore_has_commented_feat_rule "${base_gitignore_path}"; then
+  echo "[INFO] .gitignore 的 .feat 规则被注释；跳过自动归档（避免移动可能被 git 跟踪的文件）。"
+elif [[ -d "${feat_root}" && -f "${script_dir}/archive_old_notes.py" ]]; then
+  if [[ -n "$(git ls-files -- .feat | head -n 1)" ]]; then
+    echo "[INFO] 检测到 .feat 下存在 git 跟踪文件；跳过自动归档（避免产生意外变更）。"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 "${script_dir}/archive_old_notes.py" --feat-dir "${feat_root}" --threshold-hours 12
+  else
+    echo "[WARN] 未找到 python3；跳过自动归档（.feat/_archive）。"
+  fi
+fi
+
 git worktree add "${worktree_dir}" -b "${feature_branch}" "${base_branch}"
 
-feature_root="$(cd "${worktree_dir}" && git rev-parse --show-toplevel)"
-notes_ts="$(date -u '+%Y%m%d-%H%M')"
+notes_ts="$(date '+%Y%m%d-%H%M')"
 notes_rel_dir=".feat/${notes_ts}-${slug}"
-notes_dir="${feature_root}/${notes_rel_dir}"
+notes_dir="${repo_root}/${notes_rel_dir}"
 mkdir -p "${notes_dir}"
 
-created_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+created_at_local="$(date '+%Y-%m-%dT%H:%M:%S%z')"
 
 cat >"${notes_dir}/requirements.md" <<EOF
 ---
@@ -83,7 +145,7 @@ notes_dir: "${notes_rel_dir}"
 base_branch: "${base_branch}"
 feature_branch: "${feature_branch}"
 worktree: "${worktree_dir}"
-created_at_utc: "${created_at}"
+created_at_local: "${created_at_local}"
 ---
 # Feature Requirements: ${slug}
 
@@ -94,9 +156,9 @@ created_at_utc: "${created_at}"
 - Base branch: ${base_branch}
 - Feature branch: ${feature_branch}
 - Worktree: ${worktree_dir}
-- Created (UTC): ${created_at}
+- Created (Local): ${created_at_local}
 
-## v0 (draft) - ${created_at}
+## v0 (draft) - ${created_at_local}
 
 ### Goals
 - TODO
@@ -130,14 +192,14 @@ summary: "Evidence-first context notes for ${slug}"
 doc_type: context
 slug: "${slug}"
 notes_dir: "${notes_rel_dir}"
-created_at_utc: "${created_at}"
+created_at_local: "${created_at_local}"
 ---
 # Context Notes
 
 > 使用与用户需求一致的语言填写本文档内容。
 
 目标：记录最小但关键的上下文证据（入口、现状、约束、关键定位）。
-要求：用 `path:line` 锚点，避免把大段日志贴进对话。
+要求：用 \`path:line\` 锚点，避免把大段日志贴进对话。
 
 ## Entrypoints
 - TODO: path:line - why it matters
@@ -154,18 +216,19 @@ EOF
 
 cat >"${notes_dir}/disagreements.md" <<EOF
 ---
-summary: "Decision log for disagreements and trade-offs"
+summary: "Decision log for disagreements and trade-offs (if any)"
 doc_type: disagreements
 slug: "${slug}"
 notes_dir: "${notes_rel_dir}"
-created_at_utc: "${created_at}"
+created_at_local: "${created_at_local}"
 ---
 # Disagreement Log
 
 > 使用与用户需求一致的语言填写本文档内容。
 
-当需求/方案存在分歧时，用这里显式记录，并给出选项与 trade-off（然后停下等用户选择）。
+当前暂无明确分歧。如后续出现方案取舍，将在此记录选项与决策。
 
+## 记录格式（出现分歧时）
 - Topic:
   - Option A:
   - Option B:
@@ -179,13 +242,13 @@ summary: "Delivery summary, verification, and impact notes"
 doc_type: delivery
 slug: "${slug}"
 notes_dir: "${notes_rel_dir}"
-created_at_utc: "${created_at}"
+created_at_local: "${created_at_local}"
 ---
 # Delivery Notes
 
 > 使用与用户需求一致的语言填写本文档内容。
 
-交付时的详细说明（最终会随 squash merge 合回 base 分支）。
+交付时的详细说明（用于复盘、PR 描述、以及合并前自检）。
 
 ## Changes
 - TODO
@@ -204,45 +267,41 @@ created_at_utc: "${created_at}"
 - TODO
 EOF
 
-# Ensure the notes are not ignored. If ignored, append a minimal unignore block
-# in the current feature branch so the notes can be committed and squash-merged.
-if git -C "${feature_root}" check-ignore -q "${notes_rel_dir}/requirements.md"; then
-  gitignore_path="${feature_root}/.gitignore"
-  marker_start="# --- Codex feature notes (tracked) ---"
-  marker_end="# --- End Codex feature notes ---"
+echo "[OK] 已初始化 feature notes：${notes_dir}"
 
-  if [[ ! -f "${gitignore_path}" ]]; then
-    : >"${gitignore_path}"
-  fi
-
-  if command -v rg >/dev/null 2>&1; then
-    has_marker="$(rg -F -q "${marker_start}" "${gitignore_path}" && echo 1 || echo 0)"
+# Convenience: link the notes into the new worktree so you can edit/view them from there too.
+feature_root="$(cd "${worktree_dir}" && git rev-parse --show-toplevel)"
+feature_gitignore_path="${feature_root}/.gitignore"
+if [[ -f "${feature_gitignore_path}" ]]; then
+  if gitignore_has_commented_feat_rule "${feature_gitignore_path}"; then
+    echo "[INFO] worktree 的 .gitignore 中存在被注释掉的 .feat 规则；按约定不修改。"
+  elif gitignore_has_feat_rule "${feature_gitignore_path}"; then
+    echo "[OK] worktree 的 .gitignore 已包含 .feat ignore 规则。"
   else
-    has_marker="$(grep -F -q "${marker_start}" "${gitignore_path}" && echo 1 || echo 0)"
-  fi
+    cat >>"${feature_gitignore_path}" <<'EOF'
 
-  if [[ "${has_marker}" != "1" ]]; then
-    cat >>"${gitignore_path}" <<EOF
-
-${marker_start}
-!.feat/
-!.feat/**
-${marker_end}
+# Local feature notes (not tracked)
+.feat/
 EOF
-    echo "[INFO] 已追加 .gitignore 反忽略块：${gitignore_path}"
+    echo "[OK] 已追加 .feat/ 到 worktree 的 .gitignore（建议提交合入主分支，保持仓库一致）。"
   fi
+else
+  echo "[INFO] worktree 未找到 .gitignore；跳过追加 .feat ignore 规则。"
+fi
 
-  if git -C "${feature_root}" check-ignore -q "${notes_rel_dir}/requirements.md"; then
-    echo "[WARN] 仍然被忽略：${notes_rel_dir}/requirements.md"
-    echo "       请手动检查 .gitignore / 全局 ignore 规则，确保该目录可被提交。"
-  fi
+mkdir -p "${feature_root}/.feat"
+link_path="${feature_root}/${notes_rel_dir}"
+if [[ -e "${link_path}" ]]; then
+  echo "[INFO] worktree 内已存在 notes 路径，跳过创建链接：${link_path}"
+else
+  ln -s "${notes_dir}" "${link_path}"
+  echo "[OK] 已在 worktree 内创建 notes 链接：${link_path} -> ${notes_dir}"
 fi
 
 echo
 echo "[OK] worktree 已创建：${worktree_dir}"
-echo "[OK] feature notes：${notes_dir}"
 echo
 echo "Next:"
 echo "  1) cd \"${worktree_dir}\""
-echo "  2) 用 rg/目录结构做最小上下文探索，并把定位写入：${notes_rel_dir}/context.md"
-echo "  3) 在实现前先写 v0 需求 + 提问，等用户确认 vFinal"
+echo "  2) 做最小上下文探索，并把定位写入：${notes_rel_dir}/context.md（该路径在 base repo 与 worktree 中均可访问）"
+echo "  3) 在实现前先写 v0 需求 + 提问；如出现分歧，先写 disagreements 并停下等确认"

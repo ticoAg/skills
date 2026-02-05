@@ -15,5 +15,4 @@ This repository contains reusable Codex CLI skills.
 - `.experimental/`: Experimental upstream skills (mirrors `openai/skills`)
 - `feat-wt-kickoff/`: Feature kickoff workflow using `git worktree` (branch + worktree + notes)
 - `feat-wt-closeout/`: Feature closeout workflow (squash merge + delivery notes)
-- `git-auto-commit/`: Helper workflow for crafting a Conventional Commit and running `git commit`
 - `.system/`: Internal helper skills (e.g., skill installer/creator)

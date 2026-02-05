@@ -1,6 +1,6 @@
 ---
 name: feat-wt-closeout
-description: 完成一个基于 git worktree 的 feature：补齐 .feat/{YYYYMMDD-HHMM}-{slug}/ 交付说明并确认需求 vFinal，把 feat/{slug} 用 squash merge 合回原 base 分支，并按 git-auto-commit 流程生成最终单一提交，最后清理 worktree（兼容旧版 .cache/codex/features/{slug}/ 结构）。
+description: 完成一个基于 git worktree 的 feature：补齐 .feat/{YYYYMMDD-HHMM}-{slug}/ 交付说明并确认需求 vFinal，把 feat/{slug} 用 squash merge 合回原 base 分支，并按 /prompts:commit 流程生成最终单一提交，最后清理 worktree（兼容旧版 .cache/codex/features/{slug}/ 结构）。
 ---
 
 # Feature Worktree Closeout
@@ -46,7 +46,7 @@ bash ~/.codex/skills/feat-wt-closeout/scripts/prepare-squash-merge.sh {slug}
 - `git checkout <base-branch>`
 - `git merge --squash feat/{slug}`
 
-注意：脚本不会自动 commit（为了强制走 `git-auto-commit` 的 message 生成流程）。
+注意：脚本不会自动 commit（为了强制走 `/prompts:commit` 的 message 生成流程）。
 
 （可选）你也可以用脚本读取本任务沉淀文档的 YAML header（输出带文件路径，Markdown 列表，默认隐藏重复字段如 slug/notes_dir）：
 
@@ -54,12 +54,12 @@ bash ~/.codex/skills/feat-wt-closeout/scripts/prepare-squash-merge.sh {slug}
 python3 ~/.codex/skills/feat-wt-closeout/scripts/read-notes-headers.py {slug}
 ```
 
-### 4. 用 git-auto-commit 生成最终提交（必须）
+### 4. 用 `/prompts:commit` 生成最终提交（必须）
 
-按 `git-auto-commit` skill 流程执行（重点约束：只观察一次 diff）：
+按 `prompts/commit` 流程执行（重点约束：只观察一次 diff）：
 
-- 观察：`bash ~/.codex/skills/git-auto-commit/scripts/observe_changes.sh`
-- 生成并提交：`printf '%s\n' "$COMMIT_MSG" | bash ~/.codex/skills/git-auto-commit/scripts/commit.sh`
+- 观察：`bash ~/.codex/prompts/scripts/commit/observe_changes.sh`
+- 生成并提交：`printf '%s\n' "$COMMIT_MSG" | bash ~/.codex/prompts/scripts/commit/commit.sh`
 
 期望结果：base 分支上最终只有 1 个 squash commit（无 merge commit）。
 

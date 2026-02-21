@@ -8,3 +8,4 @@
 # OS / tooling
 .Spotlight-V100
 .Trashes
+*.pyc

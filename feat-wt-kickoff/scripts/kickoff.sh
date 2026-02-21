@@ -161,25 +161,25 @@ created_at_local: "${created_at_local}"
 ## v0 (draft) - ${created_at_local}
 
 ### Goals
-- TODO
+- [ ] TODO
 
 ### Non-goals
-- TODO
+- [ ] TODO
 
 ### Acceptance criteria
-- TODO
+- [ ] TODO
 
 ### Open questions
-- TODO
+- [ ] TODO
 
 ### Options / trade-offs
 - Option A:
 - Option B:
 
 ### Verification plan
-- Unit tests:
-- Integration tests:
-- Manual steps:
+- [ ] Unit tests:
+- [ ] Integration tests:
+- [ ] Manual steps:
 
 ## vFinal - TBD
 

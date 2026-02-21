@@ -1,0 +1,4 @@
+interface:
+  display_name: "brief2flow"
+  short_description: "Init/optimize workflow.blueprint.md."
+  default_prompt: "Produce or refine workflow.blueprint.md for a workflow workspace directory: start with an abstract-style '## 摘要' summarizing user needs + actual implementation approach + outputs + constraints; include a safe Mermaid flowchart, Node.* numbered node specs, backticked types, fenced ```markdown prompts, and traceable I/O variables with descriptions. Use Markdown-first for generative nodes and add Extractor LLM nodes only when downstream requires strict structured fields."

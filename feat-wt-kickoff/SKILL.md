@@ -19,6 +19,7 @@ description: 使用 git worktree 启动一个 feature：澄清需求，创建 fe
     - 文件清单：`requirements.md` / `context.md` / `disagreements.md` / `delivery.md`
 - 文档头部包含 YAML metadata（字段灵活，不做强约束；脚本会写入一组默认字段）
 - 文档正文语言随用户需求语言
+- `requirements.md` 中的具体 TODO 使用 Markdown checklist：`- [ ]`；完成后改为 `- [x]`（保持可追踪进度）
 - 过程中如有阶段性进展，可随时更新沉淀文档（用于回溯与交付说明）
 
 ## 快速开始（推荐用脚本）

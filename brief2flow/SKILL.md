@@ -45,7 +45,7 @@ description: Define how an agent should initialize or optimize workflow blueprin
 - 节点名称必须以 `Node.` 开头：`Node.0`、`Node.1`、`Node.2`…
 - `workflow.blueprint.md` 必须包含：
   - 一段 **Mermaid** 流程图（只写整体节点流程）
-  - 每个节点的：名称（带序号）、类型、功能（简述）、输入、输出、prompt/代码
+  - 每个节点的：名称（带序号）、类型、功能（简述）、输入/输出（开始仅输入、结束仅输出）、prompt/代码
 - 类型必须使用反引号包裹，例如：`文本生成`、`文本生成（Extractor）`、`图片生成`、`视频生成`、`开始`、`结束`。
 - prompt 必须使用围栏包裹：
   - 文本生成：```markdown
@@ -53,6 +53,10 @@ description: Define how an agent should initialize or optimize workflow blueprin
 
 ### 4) 变量 I/O 必须“可追溯 + 可复用”
 对每个节点（Node）的变量 I/O，按下面要求写清（**必选项缺一不可**）：
+
+**特殊规则（开始/结束节点）：**
+- `开始` 节点：只写 `**输入**`（不在开始节点重复声明 `**输出**` 变量；下游可直接引用这些入参）。
+- `结束` 节点：只写 `**输出**`（不在结束节点重复声明 `**输入**` 变量；在输出注释中写清来自哪个上游节点以保持可追溯）。
 
 **输入变量（Node 的 `**输入**` 部分）必选：**
 - 变量名（建议 `snake_case`）
@@ -72,6 +76,7 @@ description: Define how an agent should initialize or optimize workflow blueprin
 > - 上游变量引用：`- \`x\`（string）← 来自「Node.1 ...」.\`y\`：用于……（默认：... 可选）`
 > - 用户输入（开始节点常见）：`- \`poi\`（string，来源：用户输入）：……（默认：... 可选）`
 > - 常量/手填：`- \`lang\`（string，来源：常量）：……（默认：... 可选）`
+> - 工作流输出（结束节点常见）：`- \`result_md\`（string）← 来自「Node.2 ...」：作为 workflow 对外返回值`
 
 ### 5) Mermaid 安全规范（避免解析报错）
 - 必须用 `flowchart TD`
@@ -98,12 +103,11 @@ description: Define how an agent should initialize or optimize workflow blueprin
 #### `开始`
 - **功能**：声明 workflow 入参（启动时需要用户提供的变量）。
 - **支持输入**：文本字段为主（string/number/bool 等）。
-- **典型输出**：透传输入变量供下游引用。
+- **变量约定**：开始节点只声明 `**输入**` 变量（不重复声明 `**输出**`）；下游可直接引用这些入参。
 
 #### `结束`
 - **功能**：声明 workflow 返回值（对外暴露哪些变量）。
-- **支持输入**：引用上游任意变量（文本/图片/视频/对象等）。
-- **典型输出**：把被引用的变量作为最终结果返回。
+- **变量约定**：结束节点只声明 `**输出**` 变量（不重复声明 `**输入**`）；在输出注释里写清来自哪个上游节点以保持可追溯。
 
 #### `文本生成`（LLM）
 - **功能**：理解输入并执行“文本里定义的任务”，生成文本或结构化内容。

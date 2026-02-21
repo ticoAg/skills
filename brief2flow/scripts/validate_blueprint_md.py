@@ -130,15 +130,37 @@ def validate(text: str) -> list[Finding]:
             findings.append(Finding("WARN", f"{node_id}: missing '- **功能**：...' line"))
 
         type_line_match = re.search(r"^\-\s+\*\*类型\*\*：(.+)$", section, flags=re.MULTILINE)
+        is_start_node = False
+        is_end_node = False
         if not type_line_match:
             findings.append(Finding("WARN", f"{node_id}: missing '- **类型**：`...`' line"))
         else:
             type_value = type_line_match.group(1).strip()
             if "`" not in type_value:
                 findings.append(Finding("ERROR", f"{node_id}: type value should be wrapped in backticks, got: {type_value}"))
+            is_start_node = "开始" in type_value
+            is_end_node = "结束" in type_value
 
         for sec_name in ("输入", "输出"):
             window = _extract_section_window(section, sec_name)
+            if is_start_node and sec_name == "输出":
+                if window is not None:
+                    findings.append(
+                        Finding(
+                            "WARN",
+                            f"{node_id}: start node should only declare '**输入**' variables (remove '**输出**' section)",
+                        )
+                    )
+                continue
+            if is_end_node and sec_name == "输入":
+                if window is not None:
+                    findings.append(
+                        Finding(
+                            "WARN",
+                            f"{node_id}: end node should only declare '**输出**' variables (remove '**输入**' section)",
+                        )
+                    )
+                continue
             if window is None:
                 findings.append(
                     Finding("WARN", f"{node_id}: missing '**{sec_name}**' section (allowing suffixes like 输入（...）)")

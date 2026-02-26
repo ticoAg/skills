@@ -35,18 +35,53 @@ bash ~/.codex/skills/feat-wt-kickoff/scripts/kickoff.sh <slug> [base-branch]
 - 校验 base repo 干净（防止把脏状态带入 feature）
 - 创建 `feat/{slug}` 分支与同级 worktree：`../{repo}-feat-{slug}`
 - 用**本地时间**创建 notes 目录：`.feat/{YYYYMMDD-HHMM}-{slug}/`（含 4 个文档骨架）
+- 自动安装全局命令 `feat-wt`（用于便捷检查/更新 TODO 与查看文档）
 - 默认让 `.feat/` **不进入 git**：
     - 立即生效：写入 `.git/info/exclude`（local-only，影响所有 worktree）
-    - 若 worktree 内存在 `.gitignore` 且未配置 `.feat`：自动追加 `.feat/`（便于后续合入主分支保持一致）
-    - 若 `.gitignore` 中存在**被注释掉**的 `.feat` 规则：按约定不修改，也不自动归档
+    - 默认**不会**自动修改仓库 `.gitignore`（避免在各个项目里引入可提交的变更噪音）
+    - 若希望团队/CI 也一致忽略：请手动在仓库 `.gitignore` 增加 `.feat/` 并自行决定是否提交
 - 自动归档：把 `.feat/` 下 **12 小时以上未更新**（按目录内最新 mtime）的旧 notes 移动到 `.feat/_archive/`
 - 为了在 worktree 中也能直接打开 notes：在 worktree 内创建链接 `.feat/{timestamp}-{slug} -> <base>/.feat/{timestamp}-{slug}`
+- 自动同步 TODO：kickoff 结束后会自动运行一次 `feat-wt todo sync`，更新 `requirements.md` 中的 Workflow TODO（自动同步区块）
 - 每个关键步骤都会输出一行 `[OK]/[INFO]/[WARN]` 反馈，方便 agent 感知进度
 
 （可选）仅执行归档（不创建 worktree）：
 
 ```bash
 python3 ~/.codex/skills/feat-wt-kickoff/scripts/archive_old_notes.py --feat-dir .feat --threshold-hours 12 --dry-run
+```
+
+（推荐）TODO / 文档便捷命令（严格模式：`feat-wt <资源> <行为>`，尽量短）：
+
+```bash
+# 列出当前 repo 下所有 notes（.feat/<timestamp>-<slug>）
+feat-wt notes list
+
+# 列出 requirements.md checklist（输出行号，后续按行号 complete/uncomplete）
+feat-wt todo list
+
+# 标记完成（数字是 requirements.md 行号）
+feat-wt todo complete 25
+
+# 同步 Workflow TODO（自动同步区块）
+feat-wt todo sync
+
+# 快速查看文档（默认只展示前 80 行）
+feat-wt req view
+```
+
+若提示 `feat-wt: command not found`：
+
+- 重新执行安装脚本（会自动写入对应 shell 的 rc，例如 `~/.zshrc` / `~/.bashrc` / `~/.config/fish/config.fish`）：
+
+```bash
+bash ~/.codex/skills/feat-wt-kickoff/scripts/install_feat_wt.sh
+```
+
+- 重新打开一个终端窗口/Tab 让 rc 生效；或先执行（临时生效）：
+
+```bash
+export PATH="$HOME/.codex/bin:$PATH"
 ```
 
 ## 工作流（Kickoff 阶段）

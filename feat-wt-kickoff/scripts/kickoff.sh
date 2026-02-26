@@ -45,16 +45,20 @@ if [[ -z "${base_branch}" ]]; then
   exit 1
 fi
 
-gitignore_has_feat_rule() {
-  local path="$1"
-  # Active rules: .feat / .feat/ / /.feat / /.feat/
-  # Treat unignore rules (e.g. !.feat/) as "present" too to avoid overriding repo intent.
-  [[ -f "${path}" ]] && grep -Eq '^[[:space:]]*!?/?\.feat(/|[[:space:]]|$)' "${path}"
-}
-gitignore_has_commented_feat_rule() {
-  local path="$1"
-  [[ -f "${path}" ]] && grep -Eq '^[[:space:]]*#[[:space:]]*!?/?\.feat(/|[[:space:]]|$)' "${path}"
-}
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
+# 前置 hook：确保 feat-wt 已安装（首次使用时会自动安装并给出友好提示）。
+feat_wt_target="${HOME}/.codex/bin/feat-wt"
+if [[ -f "${script_dir}/install_feat_wt.sh" ]]; then
+  if [[ -x "${feat_wt_target}" ]]; then
+    bash "${script_dir}/install_feat_wt.sh" --quiet || echo "[WARN] feat-wt 安装/更新失败；可稍后手动运行：bash \"${script_dir}/install_feat_wt.sh\"" >&2
+  else
+    bash "${script_dir}/install_feat_wt.sh" || echo "[WARN] feat-wt 安装失败；可稍后手动运行：bash \"${script_dir}/install_feat_wt.sh\"" >&2
+  fi
+else
+  echo "[WARN] 未找到 install_feat_wt.sh；跳过 feat-wt 安装。" >&2
+fi
+
 ensure_feat_ignored_in_info_exclude() {
   # Make .feat ignored immediately (local-only, shared across worktrees).
   local common_dir
@@ -83,12 +87,7 @@ EOF
   echo "[OK] 已写入 .git/info/exclude：忽略 .feat（local-only，不会进入 git）。"
 }
 
-base_gitignore_path="${repo_root}/.gitignore"
-if gitignore_has_commented_feat_rule "${base_gitignore_path}"; then
-  echo "[INFO] 检测到 .gitignore 中存在被注释掉的 .feat 规则；按约定不自动忽略 .feat，也不自动归档。"
-else
-  ensure_feat_ignored_in_info_exclude
-fi
+ensure_feat_ignored_in_info_exclude
 
 # Gate: base repo must be clean.
 if [[ -n "$(git status --porcelain)" ]]; then
@@ -111,15 +110,14 @@ echo "[INFO] base branch: ${base_branch}"
 echo "[INFO] feature branch: ${feature_branch}"
 echo "[INFO] worktree dir: ${worktree_dir}"
 
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 feat_root="${repo_root}/.feat"
 
 # Auto-archive stale notes (safe guard: only when .feat is ignored, otherwise we may move tracked files).
-if gitignore_has_commented_feat_rule "${base_gitignore_path}"; then
-  echo "[INFO] .gitignore 的 .feat 规则被注释；跳过自动归档（避免移动可能被 git 跟踪的文件）。"
-elif [[ -d "${feat_root}" && -f "${script_dir}/archive_old_notes.py" ]]; then
+if [[ -d "${feat_root}" && -f "${script_dir}/archive_old_notes.py" ]]; then
   if [[ -n "$(git ls-files -- .feat | head -n 1)" ]]; then
     echo "[INFO] 检测到 .feat 下存在 git 跟踪文件；跳过自动归档（避免产生意外变更）。"
+  elif ! git check-ignore -q .feat >/dev/null 2>&1; then
+    echo "[INFO] .feat 当前未被 ignore；跳过自动归档（避免移动可见文件）。"
   elif command -v python3 >/dev/null 2>&1; then
     python3 "${script_dir}/archive_old_notes.py" --feat-dir "${feat_root}" --threshold-hours 12
   else
@@ -157,6 +155,14 @@ created_at_local: "${created_at_local}"
 - Feature branch: ${feature_branch}
 - Worktree: ${worktree_dir}
 - Created (Local): ${created_at_local}
+
+<!-- TODO_SYNC:BEGIN -->
+## Workflow TODO（自动同步）
+- [ ] Kickoff 已完成（分支/worktree/notes 初始化）
+- [ ] vFinal 已确认（requirements.md 存在 \`## vFinal - YYYY-MM-DD\`）
+- [ ] Context 已补齐（context.md 无 TODO 且包含 \`path:line\`）
+- [ ] Delivery 已补齐（delivery.md 无 TODO）
+<!-- TODO_SYNC:END -->
 
 ## v0 (draft) - ${created_at_local}
 
@@ -267,27 +273,17 @@ created_at_local: "${created_at_local}"
 - TODO
 EOF
 
+if command -v python3 >/dev/null 2>&1 && [[ -f "${script_dir}/todo_sync.py" ]]; then
+  if ! python3 "${script_dir}/todo_sync.py" todo sync --notes-dir "${notes_dir}" --quiet; then
+    echo "[WARN] todo_sync 失败；请手动运行：python3 \"${script_dir}/todo_sync.py\" todo sync --notes-dir \"${notes_dir}\"" >&2
+  fi
+fi
+
 echo "[OK] 已初始化 feature notes：${notes_dir}"
 
 # Convenience: link the notes into the new worktree so you can edit/view them from there too.
 feature_root="$(cd "${worktree_dir}" && git rev-parse --show-toplevel)"
-feature_gitignore_path="${feature_root}/.gitignore"
-if [[ -f "${feature_gitignore_path}" ]]; then
-  if gitignore_has_commented_feat_rule "${feature_gitignore_path}"; then
-    echo "[INFO] worktree 的 .gitignore 中存在被注释掉的 .feat 规则；按约定不修改。"
-  elif gitignore_has_feat_rule "${feature_gitignore_path}"; then
-    echo "[OK] worktree 的 .gitignore 已包含 .feat ignore 规则。"
-  else
-    cat >>"${feature_gitignore_path}" <<'EOF'
-
-# Local feature notes (not tracked)
-.feat/
-EOF
-    echo "[OK] 已追加 .feat/ 到 worktree 的 .gitignore（建议提交合入主分支，保持仓库一致）。"
-  fi
-else
-  echo "[INFO] worktree 未找到 .gitignore；跳过追加 .feat ignore 规则。"
-fi
+echo "[INFO] 本工具默认仅写入 local ignore（.git/info/exclude），不会自动修改仓库 .gitignore。"
 
 mkdir -p "${feature_root}/.feat"
 link_path="${feature_root}/${notes_rel_dir}"

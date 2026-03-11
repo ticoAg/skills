@@ -15,7 +15,7 @@ This script:
   - Runs squash merge into the base branch (does NOT commit)
 
 After this script:
-  - Use the /prompts:commit prompt to create the final (single) commit on the base branch.
+  - Use the git-commit skill to create the final (single) commit on the base branch.
 EOF
 }
 
@@ -164,7 +164,7 @@ git -C "${base_repo}" checkout "${base_branch}"
 echo "[INFO] Running: git merge --squash ${feature_branch}"
 if ! git -C "${base_repo}" merge --squash "${feature_branch}"; then
   echo "[ERROR] squash merge 失败（可能有冲突）。" >&2
-  echo "       请在 base repo 内解决冲突后，再继续用 /prompts:commit 生成最终提交。" >&2
+  echo "       请在 base repo 内解决冲突后，再继续用 git-commit skill 生成最终提交。" >&2
   exit 1
 fi
 
@@ -173,7 +173,7 @@ echo "[OK] squash merge 已完成（尚未 commit），当前 staged changes 位
 echo
 echo "Next (must):"
 echo "  1) cd \"${base_repo}\""
-echo "  2) 按 /prompts:commit 流程生成最终 commit message 并提交（只观察一次 diff）"
+echo "  2) 用 git-commit skill 基于当前 staged diff 生成最终 commit message 并提交"
 echo
 echo "Optional cleanup (after commit):"
 echo "  git -C \"${base_repo}\" worktree remove \"${feature_worktree}\""

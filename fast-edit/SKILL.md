@@ -56,9 +56,15 @@ fe help
 | 用户粘贴含特殊字符的代码 | `paste --stdin --base64` |
 | 用户粘贴多份代码，保存多文件 | `write --stdin` |
 | 从剪贴板保存 | `paste` |
-| 编辑后类型检查 | `lsp_diagnostics` (推荐) 或 `check` |
+| 编辑后类型检查 | 客户端原生诊断 / 项目测试 / `check` |
 | 用户粘贴了超大文件 (600+行)，AI 无法 echo 输出 | `save-pasted` |
 | AI 从零创建大文件 (200+行)，无源文件可复制 | 分段 heredoc → `cat` 合并 → `paste --stdin` |
+
+## 环境适配说明
+
+- 在支持 `apply_patch` 一类补丁工具的客户端里，`fast-edit` 更适合作为补充工具：优先用于大文件、批量、多文件写入和粘贴落盘；小范围精确修改通常仍应优先补丁式编辑
+- `save-pasted` 依赖 OpenCode 本地存储：`~/.local/share/opencode/storage/part/` 和 `~/.local/share/opencode/storage/message/`
+- 如果上述目录不存在，说明当前环境通常不能直接使用 `save-pasted`；这时应改用 `fast-paste --stdin`、`fast-write`，或使用当前客户端原生编辑工具
 
 ## Batch JSON 格式
 
@@ -288,12 +294,12 @@ EOF
 fast-edit/
 ├── SKILL.md
 ├── scripts/
-│   ├── fast_edit.py   # CLI 入口 (139 行)
-│   ├── core.py        # 文件 I/O (82 行)
-│   ├── edit.py        # 编辑操作 (181 行)
-│   ├── paste.py       # 粘贴/写入 (107 行)
-│   ├── pasted.py      # OpenCode 存储提取 (194 行)
-│   └── check.py       # 类型检查 (145 行)
+│   ├── fast_edit.py   # CLI 入口
+│   ├── core.py        # 文件 I/O
+│   ├── edit.py        # 编辑操作
+│   ├── paste.py       # 粘贴/写入
+│   ├── pasted.py      # OpenCode 存储提取
+│   └── check.py       # 类型检查
 └── references/        # 参考文档/测试计划/依赖说明
 ```
 
@@ -307,13 +313,9 @@ fast-edit/
 
 ## 编辑后验证
 
-**推荐**：编辑完成后调用 `lsp_diagnostics` 检查类型错误：
+**推荐**：优先用当前客户端原生的诊断能力，或直接运行项目自带测试 / 类型检查。
 
-```
-lsp_diagnostics(filePath="/path/to/edited_file.py")
-```
-
-**备选**：如果 LSP 不可用，用 fast-edit 内置的 check 命令：
+**备选**：如果缺少通用诊断能力，或只是快速检查单个 Python 文件，可用 fast-edit 内置的 `check` 命令：
 
 ```bash
 fe check /path/to/edited_file.py
@@ -321,5 +323,5 @@ fe check /path/to/edited_file.py
 
 | 方式 | 优点 | 缺点 |
 |------|------|------|
-| `lsp_diagnostics` | 快（LSP 热启动）、支持所有语言 | 需要 LSP 服务运行 |
+| 客户端原生诊断 / 项目测试 | 更贴近真实工程约束、覆盖更完整 | 依赖当前客户端或项目配置 |
 | `fe check` | 独立运行、无依赖 | 仅支持 Python、冷启动稍慢 |

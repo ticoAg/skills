@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Harness Engineer"
+  short_description: "Bootstrap agent docs with clean boundaries"
+  default_prompt: "Use $agent-harness-engineer to scaffold agent-layer docs for this repository while keeping them separate from engineering, architecture, and process documentation."

@@ -1,65 +1,79 @@
 # 知识库 (Wiki)
 
-适用场景：
+## ⚠️ 必须配置 OAuth
 
-- 搜索 Wiki 节点
-- 列知识空间
-- 获取节点详情
-- 创建 / 移动 / 重命名节点
+知识库工具需要用户令牌，否则返回 99991663 错误。
 
-## 当前项目中的推荐入口
+**配置方法**: 见 [installation.md](installation.md#oauth-配置)
 
-- `wiki.node.search`
-- `wiki.space.list`
-- `wiki.space.get`
-- `wiki.space.get-node`
-- `wiki.space-node.list`
-- `wiki.space-node.create`
-- `wiki.space-node.move`
-- `wiki.space-node.update-title`
+## 搜索知识库节点
 
-身份建议：
+```yaml
+工具: mcp__lark-mcp__wiki_v1_node_search
+data:
+  query: "关键词"        # 参数名是 query，不是 search_key
+  page_size: 20
+```
 
-- `wiki.node.search` 在当前注册表中更偏 `user_only`
-- 大多数 `wiki.space*` / `wiki.space-node*` 为 `user_preferred`
+响应：
+```json
+{
+  "items": [
+    {
+      "node_id": "wikcnxxxxxx",
+      "obj_token": "doxcnxxxxxx",
+      "obj_type": 8,
+      "title": "节点标题"
+    }
+  ]
+}
+```
 
-## 关键注意事项
+## 获取节点信息
 
-1. `node_token` 和 `obj_token` 不是同一个东西。
-2. 搜索到或从 URL 提到的通常是 wiki 节点 token，不一定能直接拿去调文档 API。
-3. 真正需要读写页面内容时，经常要先 `wiki.space.get-node` 拿到 `obj_token`，再去走文档域。
-4. 机器人或当前用户是否在知识空间成员列表里，会直接影响可见性。
+```yaml
+工具: mcp__lark-mcp__wiki_v2_space_getNode
+params:
+  token: "wikcnxxxxxx"  # 必须是知识库节点 token
+```
 
-## 典型工作流
+**注意**: token 必须以 `wik` 开头，不能用文档 token (`doxcn`)。
 
-### 找一个 Wiki 页面
+## Token 类型
 
-1. `wiki.node.search`
-2. 或已知空间时 `wiki.space-node.list`
-3. 需要详情时 `wiki.space.get-node`
+| 前缀 | 类型 | 用途 |
+|------|------|------|
+| `wikcn` | 知识库节点 | `wiki_v2_space_getNode` |
+| `doxcn` | 文档 | `docx_v1_document_rawContent` |
 
-### 在知识空间里建新页面
+## 从 URL 获取 token
 
-1. `wiki.space.list`
-2. 选择 `space_id`
-3. `wiki.space-node.create`
+```
+知识库节点: https://xxx.feishu.cn/wiki/wikcnxxxxxx
+                                        ↑ 知识库节点 token
 
-### 读写 Wiki 页内容
+文档: https://xxx.feishu.cn/docx/doxcnxxxxxx
+                                ↑ 文档 token（不能用于 wiki_v2_space_getNode）
+```
 
-1. `wiki.space.get-node`
-2. 拿 `obj_token`
-3. 转到 `reference/documents.md` 中的文档 target
+## 常见错误
 
-## URL 与 token
+| 错误 | 原因 | 解决 |
+|------|------|------|
+| 99991663 | 未配置用户令牌 | 配置 OAuth |
+| 131005 document not in wiki | 使用了文档 token | 使用 `wikcn` 开头的节点 token |
 
-常见 URL：
+## 与文档工具配合
 
-`https://xxx.feishu.cn/wiki/{token}`
+```yaml
+# 1. 搜索知识库
+工具: mcp__lark-mcp__wiki_v1_node_search
+data:
+  query: "关键词"
 
-这里的 `{token}` 通常是 wiki 节点 token。只有在 `wiki.space.get-node` 返回的 `obj_token` 才是实际文档对象的 token。
-
-## Common Mistakes
-
-- 直接把 wiki URL 里的 token 当文档 token 使用。
-- 以为 Wiki API 可以全文搜索正文：当前更适合搜索节点、列树、再进入文档域。
-- 没把成员可见性问题和 API 参数问题区分开。
+# 2. 用 obj_token 读取文档内容
+工具: mcp__lark-mcp__docx_v1_document_rawContent
+path:
+  document_id: "obj_token值"
+useUAT: true
+```

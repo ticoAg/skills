@@ -1,4 +1,0 @@
-interface:
-  display_name: "Office Content Extractor"
-  short_description: "通用提取 Word、Excel、PDF、PPT 内容的策略与流程"
-  default_prompt: "Use $office-content-extractor to design or review a general Word/Excel/PDF/PPT content extraction workflow."

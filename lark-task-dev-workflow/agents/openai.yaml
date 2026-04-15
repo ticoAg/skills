@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lark Task Dev Workflow"
+  short_description: "基于飞书任务与 lark-cli 原生命令驱动开发闭环"
+  default_prompt: "Use $lark-task-dev-workflow to start from a Feishu task guid, short task ID, or applink, use native lark-cli task commands first, fall back to lark-cli api only for gaps such as comments or custom fields, auto-provision the 研发状态 field when possible, and guide the dev flow through implementation, verification, handoff, and cleanup."

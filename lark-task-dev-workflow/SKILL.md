@@ -14,25 +14,28 @@ Use Feishu Tasks as the human-facing entry point for lightweight development wor
 - Resolve bundled files relative to this `SKILL.md` directory. When your shell `workdir` is a project repo, call scripts with an absolute path like `python3 <skill-dir>/scripts/check_task_status_readiness.py`; do not assume `scripts/` exists in the repo.
 - Use `scripts/check_task_status_readiness.py` before touching code. This script exists because current `lark-cli task` does not provide an equivalent one-shot bootstrap/repair flow for the `研发状态` custom field.
 - Use `scripts/update_task_status.py` for status changes after approval. This script exists because the task status label must first be resolved to the tasklist custom-field option GUID at runtime.
+- Use `scripts/task-v2-cli/main.py` when installed `lark-cli task ...` lacks a Task v2 resource or action, especially task comment reads. See `references/task-v2-cli.md`.
 - Read `references/task-status-bootstrap.md` when the readiness check reports permissions, wrong field type, or other blocking conditions the agent cannot auto-repair.
 - Read `references/task-custom-field-auth.md` only when the blocker is `task:custom_field:*` authorization and you need the known-good re-auth pattern.
 
 ## Constraints
 
 - Prefer runtime discovery through Task OpenAPI over any local field/option cache.
-- Prefer registered `lark-cli task ...` commands first. Use `lark-cli api` only when the current CLI command set does not expose the needed read/write path, such as some comment or custom-field operations.
-- Keep custom scripts minimal. In this skill, scripts are reserved for the two unsupported automation gaps: `研发状态` bootstrap/repair and runtime label→option GUID status sync.
+- Prefer registered `lark-cli task ...` commands first. If the installed CLI does not expose the needed Task v2 resource or action, prefer the bundled `scripts/task-v2-cli/main.py` wrapper before falling back to raw `lark-cli api`.
+- Keep custom scripts minimal and stable. In this skill, scripts are reserved for unsupported automation gaps: `研发状态` bootstrap/repair, runtime label→option GUID status sync, and the Task v2 CLI wrapper used when installed `lark-cli task ...` does not expose a needed Task v2 resource.
+- If authorization, identity switching, scope repair, or `lark-cli` usage details become uncertain, prefer reading the relevant official `lark-*` skills first instead of reverse-engineering from trial and error.
 - Do not persist tasklist field GUIDs or option GUID mappings in local files.
 - The only supported lightweight status model is `待开始` → `开发中` → `待测试` → `修复中` → `已完成`.
 - If the task is associated with multiple tasklists, use the first `tasklist_guid` returned by task detail as the workflow container unless the user explicitly says otherwise.
-- If the installed `lark-cli task` command set cannot cover the needed custom-field operations, use the underlying Task OpenAPI through `lark-cli api`.
+- If the installed `lark-cli task` command set cannot cover a needed Task v2 operation, use `scripts/task-v2-cli/main.py` as the default protocol-aware fallback. Only drop to raw `lark-cli api` when the wrapper itself still lacks the needed path.
 - At task-understanding time, focus on information sources rather than a single command path: task `summary`, task `description`, relevant task comments, relevant attachments, and linked source docs are all part of the initial evidence set.
 - If task execution, auth, attachment reading, comment writing, or people-resolution behavior becomes unclear, fall back to the relevant `lark-*` skills instead of improvising unsupported calls.
 
 ## Related Lark Skills
 
-- For auth, scopes, identity switching, and permission failures, read `lark-shared`.
-- For task read/write behavior, comments, tasklists, and task mutations, read `lark-task`.
+- Treat these official `lark-*` skills as the first fallback for auth or usage uncertainty before ad-hoc exploration.
+- For auth, scopes, identity switching, and permission failures, read `lark-shared` first.
+- For task read/write behavior, comments, tasklists, and task mutations, read `lark-task` first.
 - For attachments, Drive files, imports, exports, comments on docs, or file tokens, read `lark-drive`.
 - For resolving people names or user IDs, read `lark-contact`.
 - When registered CLI commands are insufficient and you need raw Task OpenAPI paths, read `lark-openapi-explorer`.
@@ -44,7 +47,7 @@ Use Feishu Tasks as the human-facing entry point for lightweight development wor
 - Accept a raw task GUID, a short task ID like `t100169`, or a full Feishu task applink.
 - If the input is an applink, extract the `guid` query parameter first.
 - If the input is a short task ID, prefer native CLI discovery first, for example `lark-cli task +search --query "<short-id>" --format json`, then disambiguate with `task_id`, URL, or follow-up `lark-cli task tasks get`.
-- Do not add new helper scripts for routine task reading when `lark-cli task` or `lark-cli api` can already cover the path.
+- Do not add ad-hoc helper scripts for routine task reading. Use registered `lark-cli task ...` commands first, then `scripts/task-v2-cli/main.py` for Task v2 gaps.
 
 ### 2. Run readiness check first
 
@@ -71,13 +74,20 @@ lark-cli task tasks get --params '{"task_guid":"<task-guid>"}' --format json
 ```
 
 - In the current CLI, `lark-cli task tasks get` provides task detail including fields such as `summary`, `description`, attachments, origin links, and tasklists.
-- Before inventing a custom path for comments, inspect the installed CLI first with `lark-cli task --help` and `lark-cli schema task`.
-- If the current `lark-cli task` command set still has no registered read-comments command, use `lark-cli api` as the minimal fallback rather than writing a helper script, for example:
+- Before inventing a custom path for comments or other Task v2 resources, inspect the installed CLI first with `lark-cli task --help` and `lark-cli schema task`.
+- If the current `lark-cli task` command set still has no registered Task v2 command for the needed read path, use the bundled Task v2 wrapper:
 
 ```bash
-lark-cli api GET /open-apis/task/v1/tasks/<task-guid>/comments --params '{"page_size":100}' --format json
+python3 <skill-dir>/scripts/task-v2-cli/main.py comments list --task-id "<task-guid-short-id-or-applink>" --page-size 100
 ```
 
+- Read `references/task-v2-cli.md` for additional Task v2 wrapper examples and write-safety rules.
+- Default task-understanding read order when native `lark-cli task ...` coverage is incomplete:
+  1. `lark-cli task tasks get`
+  2. `python3 <skill-dir>/scripts/task-v2-cli/main.py comments list`
+  3. `python3 <skill-dir>/scripts/task-v2-cli/main.py custom-fields list` / `attachments list` / other needed Task v2 reads
+  4. linked origin docs or attachments
+- Do not jump straight from native CLI gaps to ad-hoc raw API calls if the wrapper already covers the Task v2 path.
 - If the comment API paginates, continue with `page_token` until `has_more` is false.
 - Always inspect these information sources before implementation:
   - task `summary`

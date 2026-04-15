@@ -25,6 +25,8 @@
 
 ## 权限修复
 
+如对授权、身份、scope 或 `lark-cli` 用法本身不确定，先回看官方 `lark-*` skills，尤其是 `lark-shared`，不要直接靠试错继续排查。
+
 如预检提示权限不足，先重新授权：
 
 ```bash
@@ -42,7 +44,7 @@ lark-cli auth login
 lark-cli auth check --scope "task:custom_field:read task:custom_field:write"
 ```
 
-如果这里仍然失败，说明当前 token 没真正拿到这两个 scope。此时不要在本文件里继续展开，直接转到 `references/task-custom-field-auth.md` 按专门的 auth 经验模块处理。
+如果这里仍然失败，说明当前 token 没真正拿到这两个 scope。此时不要在本文件里继续展开，先看 `lark-shared`，再转到 `references/task-custom-field-auth.md` 按专门的 auth 经验模块处理。
 
 修复后重新运行：
 

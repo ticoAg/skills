@@ -8,6 +8,7 @@
 
 ## 经验结论
 
+- 如对授权流程、身份类型或 `lark-cli auth` 行为本身不确定，先看官方 `lark-shared` skill，再继续本文件。
 - 先把 `lark-cli auth status` 和 `lark-cli auth check --scope ...` 当作唯一可信的 token 事实来源。
 - 不要只看飞书后台配置页，也不要只看 `lark-cli auth login` 输出里的“全部权限”摘要。
 - 实践里，默认的 `lark-cli auth login` 可能不会把新开的 Task 自定义字段权限自动带进本次授权请求。

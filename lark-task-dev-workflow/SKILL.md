@@ -15,8 +15,22 @@ Use Feishu Tasks as the human-facing entry point for lightweight development wor
 - Use `scripts/check_task_status_readiness.py` before touching code. This script exists because current `lark-cli task` does not provide an equivalent one-shot bootstrap/repair flow for the `研发状态` custom field.
 - Use `scripts/update_task_status.py` for status changes after approval. This script exists because the task status label must first be resolved to the tasklist custom-field option GUID at runtime.
 - Use `scripts/task-v2-cli/main.py` when installed `lark-cli task ...` lacks a Task v2 resource or action, especially task comment reads. See `references/task-v2-cli.md`.
+- Use `scripts/capture_runtime_learning.py` to append structured real-world learnings into `references/runtime-learnings.md` after user corrections, repeated tool friction, or workflow surprises that are not yet stable enough to live in `SKILL.md`.
 - Read `references/task-status-bootstrap.md` when the readiness check reports permissions, wrong field type, or other blocking conditions the agent cannot auto-repair.
 - Read `references/task-custom-field-auth.md` only when the blocker is `task:custom_field:*` authorization and you need the known-good re-auth pattern.
+- Read `references/skill-maintenance.md` when deciding whether a new learning belongs in `SKILL.md`, a topic-specific reference file, or the runtime learnings log.
+
+## Skill Maintenance Layering
+
+- Apply the same document-boundary idea used by `agent-harness-engineer`: keep stable workflow rules in `SKILL.md`, keep command-path specifics in the narrowest `references/*.md`, and keep time-stamped operational learnings in `references/runtime-learnings.md`.
+- Do not dump every new observation into `SKILL.md`. Promote only repeatable default behavior, durable workflow decisions, or cross-session policy into the main skill body.
+- When a lesson is still fresh, narrow, or possibly one-off, capture it first in `references/runtime-learnings.md` through `scripts/capture_runtime_learning.py`.
+- When the same lesson clearly changes default behavior, update the narrowest durable layer as well:
+  - `SKILL.md` for stable workflow defaults
+  - `references/task-v2-cli.md` for Task v2 command semantics and payload shape
+  - other `references/*.md` for auth/bootstrap/tool-specific guidance
+  - `scripts/*.py` only when the lesson shows a repeated deterministic automation gap
+- Keep the runtime log as evidence and recent memory; keep the main skill concise.
 
 ## Constraints
 
@@ -140,10 +154,17 @@ python3 <skill-dir>/scripts/update_task_status.py --task-id "<task-guid-short-id
 
 ### 7. Write back results
 
-- When a development round finishes, add a task comment summarizing:
-  - what changed
-  - how to verify
-  - remaining risk
+- When a development round finishes or is handed to testing, add one concise Markdown task comment that only states what was adjusted.
+- For routine successful handoffs, do not include verification commands, raw test output, commit metadata, or remaining-risk lists in the task comment unless the user explicitly asks for them.
+- Avoid bullet lists for routine task comments. Prefer one short paragraph; use a second paragraph only when necessary for clarity.
+- Use Markdown supported by task comments, such as inline code for routes, files, or component names, and preserve newlines when the comment needs more than one paragraph.
+- Suggested routine comment shape:
+
+```markdown
+已调整 `/tours/premium-china` 的行程城市卡片：移除标题左侧的数字序号，仅保留城市名与停留天数说明，避免与天数信息混淆。
+```
+
+- Keep detailed verification evidence in the agent's final delivery message or local handoff notes, not in the task comment by default.
 - Keep the task comment and the `研发状态` custom field aligned with the same handoff stage.
 - Before moving the task to `已完成`, ensure the commit has been merged back to the source branch and the temporary worktree/branch have been cleaned up.
 - Then update the `研发状态` field to match the handoff state.
@@ -166,3 +187,4 @@ python3 <skill-dir>/scripts/update_task_status.py --task-id "<task-guid-short-id
 - On success, stay quiet about the readiness check and continue into task understanding.
 - On failure, reuse the script's Markdown guidance instead of inventing a separate error format.
 - If blocked, keep the message focused on what must be repaired next.
+- After a real usage correction or repeated friction, update the narrowest appropriate layer before ending the session: durable rule in `SKILL.md`, command nuance in the specific reference file, and newly observed operational feedback in `references/runtime-learnings.md` via `scripts/capture_runtime_learning.py`.

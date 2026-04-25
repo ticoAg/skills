@@ -154,6 +154,8 @@ python3 <skill-dir>/scripts/task-v2-cli/main.py comments patch \
   --yes
 ```
 
+When replacing an existing task handoff comment after user feedback, prefer `comments patch --yes` over posting a second comment. Write the final Markdown directly into `comment.content`.
+
 Delete a comment. Do not pass `--data-json`:
 
 ```bash
@@ -206,6 +208,7 @@ For workflow status updates, existing `研发状态` scripts still require their
 
 - `comments create` uses top-level Task v2 fields like `content`, `resource_type`, `resource_id`; do not wrap the body inside `comment`.
 - `comments patch` uses the Task v2 partial-update shape: top-level `comment` plus top-level `update_fields`.
+- For existing task-comment rewrites, prefer `comments patch --yes` so the task keeps one current handoff note instead of accumulating conflicting summaries.
 - `comments delete` does not accept a request body.
 - `tasks create` uses Task v2 top-level fields like `summary`, `members`, `description`; do not wrap the body inside `task`.
 - `tasks patch` uses top-level `task` plus top-level `update_fields`.
